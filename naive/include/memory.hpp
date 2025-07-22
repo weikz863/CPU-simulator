@@ -58,7 +58,6 @@ struct MemModule : dark::Module<MemInput, MemOutput> {
       mode_ = mode;
       fin <= false;
     } else if (state) {
-      state++;
       if (state == lag) {
         fin <= true;
         state = 0;
@@ -97,8 +96,10 @@ struct MemModule : dark::Module<MemInput, MemOutput> {
             break;
           }
         }
+      } else { // state != lag
+        state++;
       }
-    } else {
+    } else { // !issue && !state, idle
       fin <= false;
       result <= 0;
     }
