@@ -83,6 +83,15 @@ struct MemModule : dark::Module<MemInput, MemOutput> {
             result <= zero_extend<32>(mp[loc]);
             break;
           }
+          case 0b10010: case 0b10001: case 0b10000: {                            // all store instructions
+            int num_bytes = 1 << static_cast<unsigned>(mode_);                   // excellent observation!
+            for (int i = 0; i < num_bytes; i++) {
+              mp[loc + i] = val; // automatic truncation
+              val >>= 8;
+            }
+            result <= 0;
+            break;
+          }
           default: {
             throw MemError();
             break;
