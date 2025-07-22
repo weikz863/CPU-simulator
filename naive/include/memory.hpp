@@ -42,6 +42,7 @@ struct MemModule : dark::Module<MemInput, MemOutput> {
         std::istringstream ss(s.data());
         ss >> std::hex >> tmp;
         mp[place] = tmp;
+        place++;
       }
     }
   }
@@ -62,6 +63,10 @@ struct MemModule : dark::Module<MemInput, MemOutput> {
         fin <= true;
         state = 0;
         switch (static_cast<unsigned>(Bit<5>({issue_, mode_}))) {
+          case 0b01010: { // lw, load word
+            result <= Bit<32>({mp[loc + 3], mp[loc + 2], mp[loc + 1], mp[loc]}); // translate back from little endian
+            break;
+          }
           default: {
             result <= 0;
             break;
@@ -74,4 +79,5 @@ struct MemModule : dark::Module<MemInput, MemOutput> {
     }
   }
 };
+
 #endif
