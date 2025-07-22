@@ -1,0 +1,3 @@
+[submodule "RISC-V-Simulator-Template"]
+	path = RISC-V-Simulator-Template
+	url = git@github.com:DarkSharpness/RISC-V-Simulator-Template.git
