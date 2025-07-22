@@ -15,7 +15,7 @@ int main() {
   cpu.add_module(&mem);
 
   issue = 1;
-  mode = 2;
+  mode = 5;
   cpu.run_once();
   issue = 0;
   mode = 0;

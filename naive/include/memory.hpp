@@ -63,12 +63,28 @@ struct MemModule : dark::Module<MemInput, MemOutput> {
         fin <= true;
         state = 0;
         switch (static_cast<unsigned>(Bit<5>({issue_, mode_}))) {
-          case 0b01010: { // lw, load word
-            result <= Bit<32>({mp[loc + 3], mp[loc + 2], mp[loc + 1], mp[loc]}); // translate back from little endian
+          case 0b01010: {                                                         // lw, load word
+            result <= Bit<32>({mp[loc + 3], mp[loc + 2], mp[loc + 1], mp[loc]});  // translate back from little endian
+            break;
+          }
+          case 0b01001: {                                                         // lh, load half-word
+            result <= sign_extend<32>(Bit<16>({mp[loc + 1], mp[loc]}));
+            break;
+          }
+          case 0b01101: {                                                         // lhu, load half-word(unsigned)
+            result <= zero_extend<32>(Bit<16>({mp[loc + 1], mp[loc]}));
+            break;
+          }
+          case 0b01000: {                                                         // lb, load byte
+            result <= sign_extend<32>(mp[loc]);
+            break;
+          }
+          case 0b01100: {                                                         // lbu, load byte(unsigned)
+            result <= zero_extend<32>(mp[loc]);
             break;
           }
           default: {
-            result <= 0;
+            throw MemError();
             break;
           }
         }
