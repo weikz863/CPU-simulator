@@ -2,5 +2,8 @@
 #include "memory.hpp"
 #include "tools.h"
 int main() {
-  std::cout << "Hello, world!";
+  MemModule mem;
+  dark::CPU cpu;
+  cpu.add_module(&mem);
+  cpu.run(10, true);
 }
