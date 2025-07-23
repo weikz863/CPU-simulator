@@ -1,28 +1,40 @@
 #include <iostream>
-#include <cstdio>
-#include "memory.hpp"
 #include "tools.h"
-int main() {
-  freopen("../sample/sample.data", "r", stdin);
-  
-  dark::CPU cpu;
 
-  unsigned issue = 0, mode = 0, addr = 0, value = 0;
-
-  MemModule mem;
-  mem.addr = [&]() { return addr; };
-  mem.delta = [&]() { return 0; };
-  mem.value = [&]() { return value; };
-  mem.issue = [&]() { return issue; };
-  mem.mode = [&]() { return mode; };
-  cpu.add_module(&mem);
-
-  freopen("/dev/tty", "r", stdin);
-  std::cin.clear();
-  while (std::cin >> std::hex >> addr >> issue >> mode >> std::hex >> value) {
-    cpu.run_once();
-    issue = 0;
-    while (!static_cast<unsigned>(mem.fin)) cpu.run_once();
-    std::cout << std::hex << static_cast<unsigned>(mem.result) << std::endl;
+using TimerInput = dark::details::empty_class;
+struct TimerOutput {
+  Register<32> timer_output;
+};
+struct Timer : dark::Module<TimerInput, TimerOutput> {
+  unsigned time;
+  Timer() : dark::Module<TimerInput, TimerOutput>{}, time(0) {
+    ;
   }
+  void work() override final {
+    time++;
+    if (time % 3 == 0) timer_output <= time;
+  }
+};
+
+struct CheckerInput {
+  Wire<32> checker_input;
+};
+using CheckerOutput = dark::details::empty_class;
+struct Checker : dark::Module<CheckerInput, CheckerOutput> {
+  Checker() : dark::Module<CheckerInput, CheckerOutput>{} {
+  }
+  void work() override final {
+    std::cout << static_cast<unsigned>(checker_input) << std::endl;
+  }
+};
+
+int main() {
+  dark::CPU cpu;
+  Timer timer;
+  Checker checker;
+  checker.checker_input = [&]() -> auto& { return timer.timer_output; };
+  cpu.add_module(&timer);
+  cpu.add_module(&checker);
+
+  cpu.run(20, true);
 }
