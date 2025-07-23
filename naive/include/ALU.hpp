@@ -46,8 +46,63 @@ struct ALUModule : dark::Module<ALUInput, ALUOutput> {
       if (state == LAG) {
         fin <= true;
         state = 0;
-        switch (static_cast<unsigned>(Bit<5>({issue_, mode_}))) {
-          
+        switch (static_cast<unsigned>(mode_)) {
+          case 0b0000: {                             // add, add
+            result <= (value1_ + value2_);
+            break;
+          }
+          case 0b0001: {                             // sub, subtract
+            result <= (value1_ - value2_);
+            break;
+          }
+          case 0b1110: {                             // and, bitwise and
+            result <= (value1_ & value2_);
+            break;
+          }
+          case 0b1100: {                             // or, bitwise or
+            result <= (value1_ | value2_);
+            break;
+          }
+          case 0b1000: {                             // xor, bitwise xor
+            result <= (value1_ ^ value2_);
+            break;
+          }
+          case 0b0010: {                             // sll, shift left logical
+            result <= (value1_ << value2_);
+            break;
+          }
+          case 0b1010: {                             // srl, shift right logical
+            result <= (value1_ >> value2_);
+            break;
+          }
+          case 0b1011: {                             // sra, shift right arithmetic
+            result <= static_cast<unsigned>(static_cast<signed>(value1_) >> value2_);
+            break;
+          }
+          case 0b0100: {                             // slt, set if less than (signed)
+            result <= static_cast<unsigned>(static_cast<signed>(value1_) < static_cast<signed>(value2_));
+            break;
+          }
+          case 0b0110: {                             // sltu, set if less than (unsigned)
+            result <= static_cast<unsigned>(value1_ < value2_);
+            break;
+          }
+          case 0b0101: {                             // sge, set if greater than or equal (signed), used by bge
+            result <= static_cast<unsigned>(static_cast<signed>(value1_) >= static_cast<signed>(value2_));
+            break;
+          }
+          case 0b0111: {                             // sgeu, set if greater than or equal (unsigned), used by bgeu
+            result <= static_cast<unsigned>(value1_ >= value2_);
+            break;
+          }
+          case 0b1111: {                             // seq, set if equal, used by beq
+            result <= static_cast<unsigned>(value1_ == value2_);
+            break;
+          }
+          case 0b1101: {                             // sne, set if unequal, used by bne
+            result <= static_cast<unsigned>(value1_ != value2_);
+            break;
+          }
           default: {
             throw ALUError();
             break;
