@@ -26,7 +26,7 @@ struct MemError {
 };
 
 struct MemModule : dark::Module<MemInput, MemOutput> {
-  static unsigned const lag = 3;
+  static constexpr unsigned LAG = 3;
   unsigned state, loc, val;
   Bit<2> issue_;
   Bit<3> mode_;
@@ -58,7 +58,7 @@ struct MemModule : dark::Module<MemInput, MemOutput> {
       mode_ = mode;
       fin <= false;
     } else if (state) {
-      if (state == lag) {
+      if (state == LAG) {
         fin <= true;
         state = 0;
         switch (static_cast<unsigned>(Bit<5>({issue_, mode_}))) {
@@ -96,7 +96,7 @@ struct MemModule : dark::Module<MemInput, MemOutput> {
             break;
           }
         }
-      } else { // state != lag
+      } else { // state != LAG
         state++;
       }
     } else { // !issue && !state, idle
