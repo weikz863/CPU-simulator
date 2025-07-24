@@ -1,12 +1,7 @@
 #pragma once
-#ifndef _MY_MEMORY_HPP_
-#define _MY_MEMORY_HPP_
+#ifndef _MY_ALU_HPP_
+#define _MY_ALU_HPP_
 
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <string_view>
-#include <unordered_map>
 #include "tools.h"
 
 struct ALUInput {
