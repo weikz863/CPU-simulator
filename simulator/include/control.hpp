@@ -3,6 +3,7 @@
 #define _MY_CONTROL_HPP_
 
 #include "tools.h"
+#include <array>
 
 struct ControlInput {
   Wire<32> mem_result;
@@ -23,13 +24,22 @@ struct ControlOutput {
   Register<4> ALU_mode;
 };
 
+struct ControlPrivate {
+  std::array<Register<32>, 32> reg;
+  Register<32> pc;
+  Register<32> logic;
+  Register<32> current_instruction;
+  Register<32> default_jmp; // this should be in reserve station, but there isn't.
+};
+
+struct ControlError {
+};
+
 struct ControlModule : dark::Module<ControlInput, ControlOutput> {
   static constexpr int RoBCAPACITY = 1; // this cannot be changed!
-  Bit<32> current_instruction;
   int RoBsize;
   bool mem_busy, ALU_busy;
-  Bit<32> reg[32], pc, logic, *loading_to, *ALU_to;
-  Bit<32> default_jmp; // this should be in reserve station, but there isn't.
+  Register<32> *loading_to, *ALU_to;
   ControlModule() : dark::Module<ControlInput, ControlOutput>{}, current_instruction{0}, RoBsize{0}, 
       mem_busy{0}, ALU_busy{0}, reg{}, pc{0}, loading_to{&reg[0]}, ALU_to{&reg[0]} {
     ;
@@ -37,10 +47,10 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput> {
   void work() {
     if (static_cast<unsigned>(mem_done)) {
       mem_busy = false;
-      *loading_to = mem_result;
+      *loading_to <= mem_result;
       if (loading_to == &current_instruction) {
         parse_instruction();
-      } else { // this is a load instruction finished
+      } else { // this is a load or store instruction finished
         commit();
       }
     }
@@ -52,14 +62,13 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput> {
       mem_delta <= 0;
       mem_issue <= 1; // 1 = load
       mem_mode <= 2; // 2 = word
-      pc += 4;
     }
     if (static_cast<unsigned>(ALU_done)) {
       ALU_busy = false;
-      *ALU_to = ALU_result;
+      *ALU_to <= ALU_result;
       if (ALU_to == &logic) { // encounter branch
-        if (static_cast<unsigned>(logic)) { // all guessing "not jump"
-          pc = default_jmp;
+        if (static_cast<unsigned>(ALU_result)) { // all guessing "not jump"
+          pc <= default_jmp;
         }
       } else { // this is an arithmetic instruction finished
         commit();
@@ -70,6 +79,47 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput> {
     }
     if (static_cast<unsigned>(ALU_issue)) {
       ALU_issue <= 0;
+    }
+  }
+  void commit() {
+    if (static_cast<unsigned>(current_instruction) == 0x0ff00513u) {
+      throw static_cast<unsigned>(reg[10]) & 0xffu;
+    }
+    RoBsize--;
+  }
+  void parse_instruction() {
+    switch (static_cast<unsigned>(mem_result.slice<7>(0))) { // opcode
+      case 0x33: { // R-type arithmetic
+        break;
+      }
+      case 0x13: { // I-type arithmetic
+        break;
+      }
+      case 0x03: { // I-type load
+        break;
+      }
+      case 0x23: { // S-type store
+        break;
+      }
+      case 0x63: { // B-type branch
+        break;
+      }
+      case 0x6f: { // J-type jal, jump and link
+        break;
+      }
+      case 0x67: { // I-type jalr, jump and link register
+        break;
+      }
+      case 0x17: { // U-type auipc, add upper immediate to pc
+        break;
+      }
+      case 0x37: { // U-type lui, load upper immediate
+        break;
+      }
+      default: {
+        throw ControlError();
+        break;
+      }
     }
   }
 };
