@@ -1,7 +1,8 @@
 #include <iostream>
 #include "tools.h"
+#include "control.hpp"
 
 int main() {
-  Bit<32> tmp = 0x010237;
-  std::cout << std::hex << static_cast<unsigned>(tmp.slice<7>(0)) << std::endl;
+  Bit<12> tmp = 0xfff;
+  std::cout << std::hex << to_signed(tmp) << std::endl;
 }

@@ -35,13 +35,13 @@ struct ControlPrivate {
 struct ControlError {
 };
 
-struct ControlModule : dark::Module<ControlInput, ControlOutput> {
+struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate> {
   static constexpr int RoBCAPACITY = 1; // this cannot be changed!
   int RoBsize;
   bool mem_busy, ALU_busy;
   Register<32> *loading_to, *ALU_to;
-  ControlModule() : dark::Module<ControlInput, ControlOutput>{}, current_instruction{0}, RoBsize{0}, 
-      mem_busy{0}, ALU_busy{0}, reg{}, pc{0}, loading_to{&reg[0]}, ALU_to{&reg[0]} {
+  ControlModule() : dark::Module<ControlInput, ControlOutput, ControlPrivate>{}, RoBsize{0}, 
+      mem_busy{0}, ALU_busy{0}, loading_to{&reg[0]}, ALU_to{&reg[0]} {
     ;
   }
   void work() {
@@ -88,11 +88,44 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput> {
     RoBsize--;
   }
   void parse_instruction() {
-    switch (static_cast<unsigned>(mem_result.slice<7>(0))) { // opcode
+    Bit<32> instruction = mem_result;
+    switch (static_cast<unsigned>(instruction.slice<7>(0))) { // opcode
       case 0x33: { // R-type arithmetic
+        unsigned rd = static_cast<unsigned>(instruction.slice<5>(7));
+        Bit<3> funct3 = instruction.slice<3>(12);
+        unsigned rs1 = static_cast<unsigned>(instruction.slice<5>(15));
+        unsigned rs2 = static_cast<unsigned>(instruction.slice<5>(20));
+        Bit<7> funct7 = instruction.slice<7>(25);
+        ALU_busy = true;
+        ALU_to = &reg[rd];
+        ALU_issue <= 1;
+        ALU_mode <= Bit<4>({funct3, funct7[5]});
+        ALU_value1 <= reg[rs1];
+        ALU_value2 <= reg[rs2];
         break;
       }
       case 0x13: { // I-type arithmetic
+        unsigned rd = static_cast<unsigned>(instruction.slice<5>(7));
+        Bit<3> funct3 = instruction.slice<3>(12);
+        unsigned rs1 = static_cast<unsigned>(instruction.slice<5>(15));
+        if (static_cast<unsigned>(funct3) == 1 || static_cast<unsigned>(funct3) == 5) { // I*-type shift 
+          Bit<5> imm = instruction.slice<5>(20);
+          Bit<7> funct7 = instruction.slice<7>(25);
+          ALU_busy = true;
+          ALU_to = &reg[rd];
+          ALU_issue <= 1;
+          ALU_mode <= Bit<4>({funct3, funct7[5]});
+          ALU_value1 <= reg[rs1];
+          ALU_value2 <= to_unsigned(imm);
+        } else {
+          Bit<32> imm = to_signed(instruction.slice<12>(20));
+          ALU_busy = true;
+          ALU_to = &reg[rd];
+          ALU_issue <= 1;
+          ALU_mode <= Bit<4>({funct3, Bit<1>(0)});
+          ALU_value1 <= reg[rs1];
+          ALU_value2 <= imm;
+        }
         break;
       }
       case 0x03: { // I-type load
