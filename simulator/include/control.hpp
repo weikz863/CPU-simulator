@@ -4,6 +4,7 @@
 
 #include "tools.h"
 #include <array>
+#include <iostream>
 
 struct ControlInput {
   Wire<32> mem_result;
@@ -39,7 +40,7 @@ struct ControlError {
 struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate> {
   static constexpr int RoBCAPACITY = 1; // this cannot be changed!
   int RoBsize;
-  bool mem_busy, ALU_busy, finished;
+  bool mem_busy, ALU_busy;
   Register<32> *loading_to, *ALU_to;
   ControlModule() : dark::Module<ControlInput, ControlOutput, ControlPrivate>{}, RoBsize{0}, 
       mem_busy{0}, ALU_busy{0}, loading_to{&reg[0]}, ALU_to{&reg[0]} {
@@ -87,6 +88,11 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate>
     }
   }
   void commit() {
+    #ifdef _DEBUG
+    std::cerr << "reg[1] = " << static_cast<unsigned>(reg[1]) << std::endl;
+    std::cerr << "reg[2] = " << static_cast<unsigned>(reg[2]) << std::endl;
+    std::cerr << "commit()" << std::endl;
+    #endif
     if (static_cast<unsigned>(current_instruction) == 0x0ff00513u) {
       throw static_cast<unsigned>(reg[10]) & 0xffu;
     }
@@ -94,6 +100,9 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate>
   }
   void parse_instruction() {
     Bit<32> instruction = mem_result;
+    #ifdef _DEBUG
+    std::cerr << std::hex << static_cast<unsigned>(instruction) << std::endl;
+    #endif
     switch (static_cast<unsigned>(instruction.slice<7>(0))) { // opcode
       case 0x33: { // R-type arithmetic
         unsigned rd = static_cast<unsigned>(instruction.slice<5>(7));
@@ -122,9 +131,9 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate>
           ALU_issue <= 1;
           ALU_mode <= Bit<4>({funct3, funct7[5]});
           ALU_value1 <= reg[rs1];
-          ALU_value2 <= to_unsigned(imm);
+          ALU_value2 <= zero_extend(imm);
         } else {
-          Bit<32> imm = to_signed(instruction.slice<12>(20));
+          Bit<32> imm = sign_extend(instruction.slice<12>(20));
           ALU_busy = true;
           ALU_to = &reg[rd];
           ALU_issue <= 1;
@@ -139,7 +148,7 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate>
         unsigned rd = static_cast<unsigned>(instruction.slice<5>(7));
         Bit<3> funct3 = instruction.slice<3>(12);
         unsigned rs1 = static_cast<unsigned>(instruction.slice<5>(15));
-        Bit<32> imm = to_signed(instruction.slice<12>(20));
+        Bit<32> imm = sign_extend(instruction.slice<12>(20));
         mem_busy = true;
         loading_to = &reg[rd];
         mem_addr <= rs1;
@@ -156,8 +165,9 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate>
         unsigned rs2 = static_cast<unsigned>(instruction.slice<5>(20));
         Bit<7> imm_higher = instruction.slice<7>(25);
         mem_busy = true;
+        loading_to = &reg[0];
         mem_addr <= rs1;
-        mem_delta <= to_signed(Bit<12>({imm_higher, imm_lower}));
+        mem_delta <= sign_extend(Bit<12>({imm_higher, imm_lower}));
         mem_value <= rs2;
         mem_issue <= 2;
         mem_mode <= funct3;
@@ -186,7 +196,7 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate>
           ALU_value1 <= reg[rs1];
           ALU_value2 <= reg[rs2];
         }
-        default_jmp <= pc + to_signed(imm);
+        default_jmp <= pc + sign_extend(imm);
         pc <= pc + 4;
         break;
       }
@@ -198,7 +208,7 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate>
         Bit<1> imm_20 = instruction.slice<1>(31);
         Bit<21> imm = {imm_20, imm_19_12, imm_11, imm_10_1, Bit<1>(0)};
         if (rd) reg[rd] <= pc + 4;
-        pc <= pc + static_cast<unsigned>(imm);
+        pc <= pc + sign_extend(imm);
         finished <= true;
         break;
       }
@@ -206,8 +216,11 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate>
         unsigned rd = static_cast<unsigned>(instruction.slice<5>(7));
         Bit<3> funct3 = instruction.slice<3>(12);
         unsigned rs1 = static_cast<unsigned>(instruction.slice<5>(15));
-        Bit<32> imm = to_signed(instruction.slice<12>(20));
+        Bit<32> imm = sign_extend(instruction.slice<12>(20));
         if (rd) reg[rd] <= pc + 4;
+        #ifdef _DEBUG
+        std::cerr << "jalr reg[rs1]: " << std::hex << static_cast<unsigned>(reg[rs1]) << std::endl;
+        #endif
         pc <= ((reg[rs1] + static_cast<unsigned>(imm)) & 0xfffffffeu);
         finished <= true;
         break;
