@@ -21,9 +21,9 @@ struct ALUError {
 
 struct ALUModule : dark::Module<ALUInput, ALUOutput> {
   static constexpr unsigned LAG = 1;
-  unsigned value1_, value2_;
+  unsigned value1_, value2_, state;
   Bit<4> mode_;
-  ALUModule() : dark::Module<ALUInput, ALUOutput>{}, value1_{0}, value2_{0}, mode_{0} {
+  ALUModule() : dark::Module<ALUInput, ALUOutput>{}, value1_{0}, value2_{0}, state{0}, mode_{0} {
     ;
   }
 	void work() override final {
