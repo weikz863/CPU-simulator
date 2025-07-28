@@ -71,6 +71,9 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate>
     }
     if (static_cast<unsigned>(ALU_done)) {
       ALU_busy = false;
+      if (static_cast<unsigned>(current_instruction) == 0x0ff00513u) {
+        throw static_cast<unsigned>(reg[10]) & 0xffu;
+      }
       if (ALU_to != &reg[0]) *ALU_to <= ALU_result;
       if (ALU_to == &logic) { // encounter branch
         if (static_cast<unsigned>(ALU_result)) { // all guessing "not jump"
@@ -89,13 +92,12 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate>
   }
   void commit() {
     #ifdef _DEBUG
-    std::cerr << "reg[1] = " << static_cast<unsigned>(reg[1]) << std::endl;
-    std::cerr << "reg[2] = " << static_cast<unsigned>(reg[2]) << std::endl;
+    std::cerr << "reg[10] = " << std::dec << static_cast<unsigned>(reg[10]) << std::endl;
     std::cerr << "commit()" << std::endl;
     #endif
-    if (static_cast<unsigned>(current_instruction) == 0x0ff00513u) {
-      throw static_cast<unsigned>(reg[10]) & 0xffu;
-    }
+    // if (static_cast<unsigned>(current_instruction) == 0x0ff00513u) {
+    //   throw static_cast<unsigned>(reg[10]) & 0xffu;
+    // }
     RoBsize--;
   }
   void parse_instruction() {
@@ -151,7 +153,7 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate>
         Bit<32> imm = sign_extend(instruction.slice<12>(20));
         mem_busy = true;
         loading_to = &reg[rd];
-        mem_addr <= rs1;
+        mem_addr <= reg[rs1];
         mem_delta <= imm;
         mem_issue <= 1;
         mem_mode <= funct3;
@@ -166,9 +168,9 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate>
         Bit<7> imm_higher = instruction.slice<7>(25);
         mem_busy = true;
         loading_to = &reg[0];
-        mem_addr <= rs1;
+        mem_addr <= reg[rs1];
         mem_delta <= sign_extend(Bit<12>({imm_higher, imm_lower}));
-        mem_value <= rs2;
+        mem_value <= reg[rs2];
         mem_issue <= 2;
         mem_mode <= funct3;
         pc <= pc + 4;
