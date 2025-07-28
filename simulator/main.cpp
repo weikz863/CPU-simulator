@@ -31,7 +31,7 @@ int main() {
   cpu.add_module(&control);
 
   try {
-    cpu.run(100000000, true);
+    cpu.run(1000000000, true);
   }
   catch (unsigned x) {
     std::cout << x << std::endl;

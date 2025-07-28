@@ -7,7 +7,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -fsanitize=address -fsani
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-add_compile_definitions(_DEBUG)
+# add_compile_definitions(_DEBUG)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/simulator/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/RISC-V-Simulator-Template/include)
 set(SOURCES 

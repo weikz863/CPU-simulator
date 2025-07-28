@@ -26,7 +26,7 @@ struct MemError {
 };
 
 struct MemModule : dark::Module<MemInput, MemOutput> {
-  static constexpr unsigned LAG = 3;
+  static constexpr unsigned LAG = 1;
   unsigned state, loc, val;
   Bit<2> issue_;
   Bit<3> mode_;
