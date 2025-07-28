@@ -79,6 +79,7 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate>
         if (static_cast<unsigned>(ALU_result)) { // all guessing "not jump"
           pc <= default_jmp;
         }
+        finished <= 1;
       } else { // this is an arithmetic instruction finished
         finished <= 1;
       }
@@ -92,7 +93,7 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate>
   }
   void commit() {
     #ifdef _DEBUG
-    std::cerr << "reg[10] = " << std::dec << static_cast<unsigned>(reg[10]) << std::endl;
+    // std::cerr << "reg[10] = " << std::dec << static_cast<unsigned>(reg[10]) << std::endl;
     std::cerr << "commit()" << std::endl;
     #endif
     // if (static_cast<unsigned>(current_instruction) == 0x0ff00513u) {
