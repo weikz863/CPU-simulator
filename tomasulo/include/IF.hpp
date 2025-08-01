@@ -16,6 +16,7 @@ struct IFInput {
 struct IFOutput {
   Register<32> result;
   Register<1> done;
+  Register<1> busy;
 };
 
 struct IFError {
@@ -36,21 +37,25 @@ struct IFModule : dark::Module<IFInput, IFOutput> {
       }
       state = 1;
       address = static_cast<unsigned>(addr);
-      done <= false;
       result <= 0;
+      done <= false;
+      busy <= true;
     } else if (state) {
       if (state == LAG) {
         result <= Bit<32>({mp.at(address + 3), mp.at(address + 2), mp.at(address + 1), mp.at(address)});
         done <= true;
         state = 0;
+        busy <= false;
       } else { // state != LAG
         result <= 0;
         done <= false;
         state++;
+        busy <= true;
       }
     } else { // !issue && !state, idle
       result <= 0;
       done <= false;
+      busy <= false;
     }
   }
 };
