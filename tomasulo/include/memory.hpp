@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <unordered_map>
+#include <list>
 #include "tools.h"
 
 struct MemInput {
@@ -12,11 +13,14 @@ struct MemInput {
   Wire<32> value;
   Wire<2> issue;
   Wire<3> mode;
+  Wire<5> to_input;
 };
 
 struct MemOutput {
-  Register<1> fin;
   Register<32> result;
+  Register<1> done;
+  Register<5> to_output;
+  Register<1> full;
 };
 
 struct MemError {
@@ -26,54 +30,59 @@ extern std::unordered_map<unsigned, Bit<8>> memory_map;
 
 struct MemModule : dark::Module<MemInput, MemOutput> {
   static constexpr unsigned LAG = 3;
-  unsigned state, loc, val;
-  Bit<2> issue_;
-  Bit<3> mode_;
+  static constexpr unsigned MAX_CAPACITY = 8;
+  struct instruction {
+    unsigned state, place, value;
+    Bit<2> issue;
+    Bit<3> mode;
+    Bit<5> to;
+  };
   std::unordered_map<unsigned, Bit<8>>& mp;
-  MemModule() : dark::Module<MemInput, MemOutput>{}, state{0}, loc{0}, val{0}, issue_{0}, mode_{0}, mp{memory_map} {
+  std::list<instruction> queue;
+  MemModule() : dark::Module<MemInput, MemOutput>{}, queue{}, mp{memory_map} {
   }
 	void work() override final {
     if (static_cast<bool>(issue)) {
-      if (state) {
+      if (full) {
         throw MemError();
       }
-      state = 1;
-      loc = static_cast<unsigned>(addr) + static_cast<unsigned>(delta);
-      val = static_cast<unsigned>(value);
-      issue_ = issue;
-      mode_ = mode;
-      fin <= false;
+      queue.push_back({0u, static_cast<unsigned>(addr) + static_cast<unsigned>(delta), static_cast<unsigned>(value), 
+                       issue, mode, to_input});
+      done <= false;
       result <= 0;
-    } else if (state) {
+      to_output <= 0;
+    }
+    if (!queue.empty()) {
+      auto &[state, place, value, issue, mode, to] = queue.front();
       if (state == LAG) {
-        fin <= true;
-        state = 0;
-        switch (static_cast<unsigned>(Bit<5>({issue_, mode_}))) {
+        done <= true;
+        to_output <= to;
+        switch (static_cast<unsigned>(Bit<5>({issue, mode}))) {
           case 0b01010: {                                                         // lw, load word
-            result <= Bit<32>({mp[loc + 3], mp[loc + 2], mp[loc + 1], mp[loc]});  // translate back from little endian
+            result <= Bit<32>({mp[place + 3], mp[place + 2], mp[place + 1], mp[place]});  // translate back from little endian
             break;
           }
           case 0b01001: {                                                         // lh, load half-word
-            result <= sign_extend<32>(Bit<16>({mp[loc + 1], mp[loc]}));
+            result <= sign_extend<32>(Bit<16>({mp[place + 1], mp[place]}));
             break;
           }
           case 0b01101: {                                                         // lhu, load half-word(unsigned)
-            result <= zero_extend<32>(Bit<16>({mp[loc + 1], mp[loc]}));
+            result <= zero_extend<32>(Bit<16>({mp[place + 1], mp[place]}));
             break;
           }
           case 0b01000: {                                                         // lb, load byte
-            result <= sign_extend<32>(mp[loc]);
+            result <= sign_extend<32>(mp[place]);
             break;
           }
           case 0b01100: {                                                         // lbu, load byte(unsigned)
-            result <= zero_extend<32>(mp[loc]);
+            result <= zero_extend<32>(mp[place]);
             break;
           }
           case 0b10010: case 0b10001: case 0b10000: {                            // all store instructions
-            int num_bytes = 1 << static_cast<unsigned>(mode_);                   // excellent observation!
+            int num_bytes = 1 << static_cast<unsigned>(mode);                   // excellent observation!
             for (int i = 0; i < num_bytes; i++) {
-              mp[loc + i] = val; // automatic truncation
-              val >>= 8;
+              mp[place + i] = value; // automatic truncation
+              value >>= 8;
             }
             result <= 0;
             break;
@@ -83,15 +92,17 @@ struct MemModule : dark::Module<MemInput, MemOutput> {
             break;
           }
         }
+        queue.pop_front();
       } else { // state != LAG
         state++;
-        fin <= false;
+        done <= false;
         result <= 0;
       }
-    } else { // !issue && !state, idle
-      fin <= false;
+    } else { // idle
+      done <= false;
       result <= 0;
     }
+    full <= (queue.size() == MAX_CAPACITY);
   }
 };
 
