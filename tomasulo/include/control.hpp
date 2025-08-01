@@ -66,6 +66,7 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate>
     ;
   }
   void work() {
+
   }
   void commit() {
   }
