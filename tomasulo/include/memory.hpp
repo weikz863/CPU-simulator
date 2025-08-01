@@ -3,9 +3,6 @@
 #define _MY_MEMORY_HPP_
 
 #include <iostream>
-#include <sstream>
-#include <string>
-#include <string_view>
 #include <unordered_map>
 #include "tools.h"
 
@@ -34,19 +31,6 @@ struct MemModule : dark::Module<MemInput, MemOutput> {
   Bit<3> mode_;
   std::unordered_map<unsigned, Bit<8>>& mp;
   MemModule() : dark::Module<MemInput, MemOutput>{}, state{0}, loc{0}, val{0}, issue_{0}, mode_{0}, mp{memory_map} {
-    unsigned place = 0, tmp = 0;
-    std::string s;
-    while (std::cin >> s) {
-      if (s[0] == '@') {
-        std::istringstream ss(std::string(s.data() + 1));
-        ss >> std::hex >> place;
-      } else {
-        std::istringstream ss(s.data());
-        ss >> std::hex >> tmp;
-        mp[place] = tmp;
-        place++;
-      }
-    }
   }
 	void work() override final {
     if (static_cast<bool>(issue)) {
