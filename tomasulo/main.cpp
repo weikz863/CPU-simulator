@@ -4,7 +4,7 @@
 #include <string_view>
 #include <unordered_map>
 #include "tools.h"
-// #include "control.hpp"
+#include "control.hpp"
 #include "memory.hpp"
 #include "ALU.hpp"
 #include "IF.hpp"
@@ -29,7 +29,7 @@ int main() {
   MemModule mem;
   ALUModule ALU;
   IFModule IF;
-  // ControlModule control;
+  ControlModule control;
 
   cpu.add_module(&mem);
   cpu.add_module(&ALU);
