@@ -66,7 +66,9 @@ struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate>
     ;
   }
   void work() {
-
+    to_IF.addr <= 0;
+    to_IF.issue <= !to_IF.issue;
+    std::cerr << static_cast<unsigned>(from_IF.result) << std::endl;
   }
   void commit() {
   }
