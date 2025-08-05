@@ -5,6 +5,7 @@
 #include "tools.h"
 #include <array>
 #include <iostream>
+#include "ArrDeque.hpp"
 
 struct ControlInput {
   struct ControlFromIF {
@@ -50,11 +51,8 @@ struct ControlOutput {
 
 struct ControlPrivate {
   std::array<Register<32>, 32> reg;
+  std::array<Register<5>, 32> reg_name;
   Register<32> pc;
-  Register<32> logic;
-  Register<32> current_instruction;
-  Register<32> default_jmp; // this should be in reserve station, but there isn't.
-  Register<1> finished;
 };
 
 struct ControlError {
@@ -62,13 +60,65 @@ struct ControlError {
 
 struct ControlModule : dark::Module<ControlInput, ControlOutput, ControlPrivate> {
   static constexpr int RoBCAPACITY = 8;
-  ControlModule() : dark::Module<ControlInput, ControlOutput, ControlPrivate>{} {
+  struct RoBEntry {
+    unsigned instruction, rs1_name, rs2_name, val1, val2, rd_name, rd;
+    bool finished;
+    enum class InstructionType {
+      ARITHMETIC, MEMORY, CONTROL,
+    } type;
+  };
+  ArrDeque<RoBEntry, RoBCAPACITY> reorder_buffer;
+  ControlModule() : dark::Module<ControlInput, ControlOutput, ControlPrivate>{}, {
     ;
   }
   void work() {
-    to_IF.addr <= 0;
-    to_IF.issue <= !to_IF.issue;
-    std::cerr << static_cast<unsigned>(from_IF.result) << std::endl;
+    if (reorder_buffer.size() < RoBCAPACITY && !from_IF.busy) {
+      to_IF.addr <= pc;
+      to_IF.issue <= true;
+    } else {
+      to_IF.addr <= 0;
+      to_IF.issue <= false;
+    }
+    if (from_IF.done) {
+      parse_instruction();
+    }
+    bool all_ARITHMETIC = true;
+    for (auto it = reorder_buffer.begin(); it != reorder_buffer.end(); ++it) {
+      if (insturction.rs1_name == 0 && instruction.rs2_name == 0 && (all_ARITHMETIC || insturction.type == InstructionType::ARITHMETIC)) {
+        issue(instruction, static_cast<unsigned>(it));
+        break;
+      }
+      if (insturction.type != InstructionType::ARITHMETIC) all_ARITHMETIC = false;
+    }
+    if (from_ALU.done) {
+      auto it = reorder_buffer.construct_iterator(from_ALU.to_output);
+      it->finished = true;
+      for (auto& t : reorder_buffer) {
+        if (t.rs1_name == from_ALU.to_output) {
+          t.rs1_name = 0;
+          t.val1 = from_ALU.result;
+        }
+        if (t.rs2_name == from_ALU.to_output) {
+          t.rs2_name = 0;
+          t.val2 = from_ALU.result;
+        }
+      }
+    }
+    if (from_mem.done) {
+      auto it = reorder_buffer.construct_iterator(from_mem.to_output);
+      it->finished = true;
+      for (auto& t : reorder_buffer) {
+        if (t.rs1_name == from_mem.to_output) {
+          t.rs1_name = 0;
+          t.val1 = from_mem.result;
+        }
+        if (t.rs2_name == from_mem.to_output) {
+          t.rs2_name = 0;
+          t.val2 = from_mem.result;
+        }
+      }
+    }
+    if (!reorder_buffer.empty() && reorder_buffer.begin()->finished) commit();
   }
   void commit() {
   }
